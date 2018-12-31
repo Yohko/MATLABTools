@@ -2,11 +2,11 @@
 %load multiple VAMAS ASCII files
 function spectraVMS = VMS_dload()
     [FileNamecell,PathName,Fileindex] = uigetfile({'*.vms;*.VMS', 'VAMAS'},'Select a VAMAS file','MultiSelect', 'on');
-    FileName = char(FileNamecell); % convert from cell to string list
-    spectraVMS = struct([]);
     if(Fileindex == 0)
         return;
     end
+    FileName = char(FileNamecell); % convert from cell to string list
+    spectraVMS = struct([]);
     for i=1:size(FileName,1)
         [~,name,~] = fileparts(FileName(i,:));
         fid=fopen(stripstrfirstlastspaces(sprintf('%s%s',PathName,FileName(i,:))),'r');
