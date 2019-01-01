@@ -50,11 +50,11 @@ function data = VMS_load_data(fid)
     end
     exp_mode = fgetl(fid);
     if(~any(startsWith(exp_modes, exp_mode)))
-        fprintf('scan mode has an invalid value: %s\n',exp_mode);
+        fprintf('Exp mode has an invalid value: %s\n',exp_mode);
     end
     scan_mode = fgetl(fid);
     if(~any(startsWith( scan_modes,  scan_mode)))
-        fprintf('scan mode has an invalid value: %s\n',scan_mode);
+        fprintf('Scan mode has an invalid value: %s\n',scan_mode);
     end
     
     %some exp_mode specific file-scope meta-info
@@ -133,9 +133,11 @@ function data = VMS_load_data(fid)
         
         if ~isempty(blkdata)
             if(i==1)
-                data = struct('sampleID',blkdata(1),'blockID',blkdata(2),'spectrum',blkdata(3),'comment',blkdata(4));
+                data = struct('sampleID',blkdata(1),'blockID',blkdata(2),'spectrum',blkdata(3),'comment',blkdata(4),...
+                    'scanmode',blkdata(5),'expmode',blkdata(6),'tech',blkdata(7));
             else
-                data = [data;struct('sampleID',blkdata(1),'blockID',blkdata(2),'spectrum',blkdata(3),'comment',blkdata(4))];
+                data = [data;struct('sampleID',blkdata(1),'blockID',blkdata(2),'spectrum',blkdata(3),'comment',blkdata(4),...
+                    'scanmode',blkdata(5),'expmode',blkdata(6),'tech',blkdata(7))];
             end
         else
             disp('Error reading block.');

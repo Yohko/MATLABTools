@@ -36,10 +36,11 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
     cmt_lines = 0;
     if includew(8) % skip comments on this block
         cmt_lines = str2double(fgetl(fid));
-%        if ~(isnumeric(cmt_lines))
-%            disp('Error opening Vamas file (cmt_lines)!');
-%            return;
-%       end
+        if (~(isnumeric(cmt_lines)) || isnan(cmt_lines))
+            disp('Error opening Vamas file (cmt_lines)!');
+            data = {};
+            return;
+       end
         for i=1:cmt_lines
             tmps = fgetl(fid);
             if(length(tmps) == 0)
@@ -54,7 +55,7 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
         tech = fgetl(fid);
         comment = sprintf('%s\ntech: %s',comment, tech);
         if(~any(startsWith(tech_modes, tech)))
-            fprintf('scan mode has an invalid value: %s\n',tech);
+            fprintf('Tech mode has an invalid value: %s\n',tech);
         end
     end
     if includew(10)
@@ -269,19 +270,25 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
         xdim = param.last_end_x;
     end
     if (param.first_end_y>=param.last_end_y)
-        ydim = param.first_end_x;
+        ydim = param.first_end_y;
     else
-        ydim = param.last_end_x;
+        ydim = param.last_end_y;
     end
     xdim = xdim-(param.first_start_x-1);
     ydim = ydim-(param.first_start_y-1);
     
+	% TODO speed up reading here
     switch scan_mode
         case 'MAPPING'
+            if (xdim*ydim ~= cur_blk_steps)
+                disp('Error. xdim*ydim != cur_blk_steps.')
+                data = {};
+                return;
+            end
             ycols = zeros(xdim,ydim);
-            for j=1:ydim
-                for i=1:xdim
-                    ycols(i,j)=str2double(fgetl(fid));
+            for j=1:xdim
+                for i=1:ydim
+                    ycols(j,i)=str2double(fgetl(fid));
                 end
             end
         otherwise
@@ -316,11 +323,12 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
             else
                 ycols(:,1) = x_start:x_step:x_start+(cur_blk_steps/param.cor_var-1)*x_step;
             end
+
             for i=1:cur_blk_steps
                 tmpd=str2double(fgetl(fid));
                 if isnan(tmpd)
                     % some VMS files have empty lines here, CasaXPS still loads these files properly
-                    disp('Nummeric error in countlist, trying to skip line!');
+                    disp('Error in countlist, trying to skip line!');
                     tmpd=str2double(fgetl(fid));
                 end
                 ycols(n,1+col)=tmpd;
@@ -332,6 +340,8 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
                 col = 1+mod(col,param.cor_var);
                 n = (i+2-mod(i,param.cor_var))/param.cor_var;
             end
+            
+            
             if param.f_divbyNscans
                 ycols(:,2:end)=ycols(:,2:end)/scancount;
             end
@@ -339,5 +349,5 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
                 ycols(:,2:end) = ycols(:,2:end)/dwelltime;
             end         
     end
-    data = {sampleid; blockid; ycols; comment};
+    data = {sampleid; blockid; ycols; comment; scan_mode; exp_mode; tech};
 end
