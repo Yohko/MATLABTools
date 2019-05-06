@@ -9,6 +9,11 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
     dwelltime = 1;
     scancount = 1;
     tech_modes = {'AES diff','AES dir','EDX','ELS','FABMS','FABMS energy spec','ISS','SIMS','SIMS energy spec','SNMS','SNMS energy spec','UPS','XPS','XRF'};
+    calib = "";
+    annot = "";
+    region = "";
+    comp = "";
+    VMS_options; % load settings from file
 
     blockid = fgetl(fid);
     sampleid = fgetl(fid);
@@ -40,14 +45,25 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
             disp('Error opening Vamas file (cmt_lines)!');
             data = {};
             return;
-       end
-        for i=1:cmt_lines
+        end
+        ii=1;
+        while(ii<cmt_lines+1)
             tmps = fgetl(fid);
             if(length(tmps) == 0)
                 %disp('Unexpected end of VMS-file.');
                 %return;
             end
-            comment = sprintf('%s\nspectra comment #%s: %s',comment,num2str(i),tmps);
+            if(strcmp(tmps, 'Casa Info Follows'))
+                Casainfo = VMS_read_CasaInfo(fid);
+                lines = cell2mat(Casainfo(1));
+                calib = Casainfo{2};
+                annot = Casainfo{3};
+                region = Casainfo{4};
+                comp = Casainfo{5};
+                ii=ii+lines;
+            end
+            comment = sprintf('%s\nspectra comment #%s: %s',comment,num2str(cmt_lines),tmps);
+            ii = ii+1;
         end
     end
     tech = '';
@@ -65,8 +81,8 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
         end
     end
     if includew(11)
-        for i=1:exp_var_cnt
-            comment = sprintf('%s\nexperimental variable value %s: %s',comment,num2str(i),fgetl(fid));
+        for ii=1:exp_var_cnt
+            comment = sprintf('%s\nexperimental variable value %s: %s',comment,num2str(ii),fgetl(fid));
         end
     end
     if includew(12)
@@ -181,8 +197,8 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
             x_name =  fgetl(fid);
             comment = sprintf('%s\nabscissa label: %s',comment,x_name);
             comment = sprintf('%s\nabscissa units: %s',comment,fgetl(fid));
-            for i=1:(param.cor_var-1)
-                comment = sprintf('%s\nName Col%s: %s',comment,num2str(i),fgetl(fid));
+            for ii=1:(param.cor_var-1)
+                comment = sprintf('%s\nName Col%s: %s',comment,num2str(ii),fgetl(fid));
                 fgetl(fid); % corresponding variable unit
             end
             includew(32) = 0;
@@ -199,8 +215,8 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
         end
         %inclusionlist[40] = param.cor_var
         % columns initialization
-        for i=1:param.cor_var
-            comment = sprintf('%s\nName Col%s: %s',comment,num2str(i),fgetl(fid));            
+        for ii=1:param.cor_var
+            comment = sprintf('%s\nName Col%s: %s',comment,num2str(ii),fgetl(fid));            
             fgetl(fid); % corresponding variable unit
         end
     end
@@ -242,7 +258,7 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
     end
     if includew(40)
         n = str2double(fgetl(fid)); % # of additional numeric parameters
-        for i=1:n
+        for ii=1:n
             % 3 items in every loop: param_label, param_unit, param_value
             param_label =  fgetl(fid);
             param_unit =  fgetl(fid);
@@ -250,7 +266,7 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
             comment = sprintf('%s\n%s: %s %s',comment, param_label, param_value, param_unit);
         end
     end
-    for i=1:blk_fue
+    for ii=1:blk_fue
         fgetl(fid);
     end
     cur_blk_steps = str2double(fgetl(fid));
@@ -258,7 +274,7 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
        data = {};
        return; 
     end
-    for i=1:(2*param.cor_var) % min & max ordinate
+    for ii=1:(2*param.cor_var) % min & max ordinate
         fgetl(fid);
     end
     tmpd=0;
@@ -277,7 +293,7 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
     xdim = xdim-(param.first_start_x-1);
     ydim = ydim-(param.first_start_y-1);
     
-	% TODO speed up reading here
+    % TODO speed up reading here
     switch scan_mode
         case 'MAPPING'
             if (xdim*ydim ~= cur_blk_steps)
@@ -286,9 +302,9 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
                 return;
             end
             ycols = zeros(xdim,ydim);
-            for j=1:xdim
-                for i=1:ydim
-                    ycols(j,i)=str2double(fgetl(fid));
+            for jj=1:xdim
+                for ii=1:ydim
+                    ycols(jj,ii)=str2double(fgetl(fid));
                 end
             end
         otherwise
@@ -297,8 +313,8 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
             ycols = zeros(cur_blk_steps/param.cor_var,param.cor_var+1);
             if (strcmp('UPS',tech) ||  strcmp('XPS',tech)) 
                 if strcmp(x_name,'Kinetic Energy')
-                    if ~(param.f_vsEkin)
-                        if ~(param.f_posEbin)
+                    if ~(f_vsEkin)
+                        if ~(f_posEbin)
                             ycols(:,1) = x_start-excenergy:x_step:x_start-excenergy+(cur_blk_steps/param.cor_var-1)*x_step;
                         else
                             ycols(:,1) = -1*(x_start-excenergy:x_step:x_start-excenergy+(cur_blk_steps/param.cor_var-1)*x_step);
@@ -307,8 +323,8 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
                         ycols(:,1) = x_start:x_step:x_start+(cur_blk_steps/param.cor_var-1)*x_step;
                     end
                 elseif strcmp(x_name,'Binding Energy')
-                    if ~(param.f_vsEkin)
-                        if ~(param.f_posEbin)
+                    if ~(f_vsEkin)
+                        if ~(f_posEbin)
                             ycols(:,1) = -1*(x_start:x_step:x_start+(cur_blk_steps/param.cor_var-1)*x_step);
                         else
                             ycols(:,1) = x_start:x_step:x_start+(cur_blk_steps/param.cor_var-1)*x_step;
@@ -323,31 +339,28 @@ function data = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk
             else
                 ycols(:,1) = x_start:x_step:x_start+(cur_blk_steps/param.cor_var-1)*x_step;
             end
-
-            for i=1:cur_blk_steps
-                tmpd=str2double(fgetl(fid));
-                if isnan(tmpd)
-                    % some VMS files have empty lines here, CasaXPS still loads these files properly
-                    disp('Error in countlist, trying to skip line!');
+            for jj=1:cur_blk_steps/param.cor_var
+                for ii=1:param.cor_var
                     tmpd=str2double(fgetl(fid));
+                    if isnan(tmpd)
+                        % some VMS files have empty lines here, CasaXPS still loads these files properly
+                        disp('Error in countlist, trying to skip line!');
+                        tmpd=str2double(fgetl(fid));
+                    end
+                    ycols(jj,1+ii)=tmpd;
+                    if(feof(fid))
+                        disp('Unexpected end of VMS-file (reading data).');
+                        data = {};
+                        return;
+                    end
                 end
-                ycols(n,1+col)=tmpd;
-                if(feof(fid))
-                    disp('Unexpected end of VMS-file (reading data).');
-                    data = {};
-                    return;
-                end
-                col = 1+mod(col,param.cor_var);
-                n = (i+2-mod(i,param.cor_var))/param.cor_var;
             end
-            
-            
-            if param.f_divbyNscans
+            if f_divbyNscans
                 ycols(:,2:end)=ycols(:,2:end)/scancount;
             end
-            if param.f_divbytime
+            if f_divbytime
                 ycols(:,2:end) = ycols(:,2:end)/dwelltime;
             end         
     end
-    data = {sampleid; blockid; ycols; comment; scan_mode; exp_mode; tech};
+    data = {sampleid; blockid; ycols; comment; scan_mode; exp_mode; tech; calib; annot; region; comp; excenergy};
 end

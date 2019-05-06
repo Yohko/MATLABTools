@@ -3,11 +3,7 @@ function data = VMS_load_data(fid)
     global param
     param = struct;
     % ### Settings ########################################################
-    param.f_vsEkin = false; % x-axis as kinetic energy?, else binding energy
-    param.f_posEbin = false; % positive binding energy?
-    param.f_divbyNscans = true;
-    param.f_divbytime = true;
-    param.f_includeTF = false;
+    VMS_options; % load settings from file
     % ### Settings ########################################################
     param.first_end_x = 0;
     param.last_end_x = 0;
@@ -45,8 +41,8 @@ function data = VMS_load_data(fid)
     comment = sprintf('%s\nexperiment identifier: %s',comment,fgetl(fid)); % experiment identifier
     % 'n' comment lines
     n = str2double(fgetl(fid));
-    for i=1:n
-        comment = sprintf('%s\nheader comment #%s:%s',comment,num2str(i),fgetl(fid));
+    for ii=1:n
+        comment = sprintf('%s\nheader comment #%s:%s',comment,num2str(ii),fgetl(fid));
     end
     exp_mode = fgetl(fid);
     if(~any(startsWith(exp_modes, exp_mode)))
@@ -71,9 +67,9 @@ function data = VMS_load_data(fid)
     end
     % experimental variables
     exp_var_cnt = str2double(fgetl(fid));
-    for i = 1:exp_var_cnt
-        comment = sprintf('%s\nexperimental variable label %s: %s',comment,num2str(i),fgetl(fid));
-        comment = sprintf('%s\nexperimental variable unit %s: %s',comment,num2str(i),fgetl(fid));
+    for ii = 1:exp_var_cnt
+        comment = sprintf('%s\nexperimental variable label %s: %s',comment,num2str(ii),fgetl(fid));
+        comment = sprintf('%s\nexperimental variable unit %s: %s',comment,num2str(ii),fgetl(fid));
     end
     
     
@@ -98,7 +94,7 @@ function data = VMS_load_data(fid)
     if (n<0)
         n=-1*n;
     end
-    for i=1:n
+    for ii=1:n
         idx = str2double(fgetl(fid));
         inclusionlist(idx) = d;
     end
@@ -107,7 +103,7 @@ function data = VMS_load_data(fid)
     % # of manually entered items in block
     % list any manually entered items
     n = str2double(fgetl(fid));
-    for i=1:n
+    for ii=1:n
         fgetl(fid)
     end
 
@@ -115,7 +111,7 @@ function data = VMS_load_data(fid)
     % list any future experiment upgrade entries
     exp_fue = str2double(fgetl(fid));
     blk_fue = str2double(fgetl(fid));
-    for i=1:exp_fue
+    for ii=1:exp_fue
         fgetl(fid)
     end
 
@@ -123,21 +119,23 @@ function data = VMS_load_data(fid)
     % handle the blocks
     blk_cnt = str2double(fgetl(fid));
     data = struct([]);
-    for i = 1:blk_cnt
-        if(i==1)
+    for ii = 1:blk_cnt
+        if(ii==1)
             for j=1:40
                 includew(j)=inclusionlist(j);
             end
         end
-        blkdata = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk_fue, comment,i);%, cor_var, param);
+        blkdata = VMS_read_block(fid, includew,exp_mode,exp_var_cnt, scan_mode,blk_fue, comment,ii);%, cor_var, param);
         
         if ~isempty(blkdata)
-            if(i==1)
+            if(ii==1)
                 data = struct('sampleID',blkdata(1),'blockID',blkdata(2),'spectrum',blkdata(3),'comment',blkdata(4),...
-                    'scanmode',blkdata(5),'expmode',blkdata(6),'tech',blkdata(7));
+                    'scanmode',blkdata(5),'expmode',blkdata(6),'tech',blkdata(7),...
+                    'calib',blkdata(8),'annot',blkdata(9),'region',blkdata(10),'comp',blkdata(11), 'excenergy',blkdata(12));
             else
                 data = [data;struct('sampleID',blkdata(1),'blockID',blkdata(2),'spectrum',blkdata(3),'comment',blkdata(4),...
-                    'scanmode',blkdata(5),'expmode',blkdata(6),'tech',blkdata(7))];
+                    'scanmode',blkdata(5),'expmode',blkdata(6),'tech',blkdata(7),...
+                    'calib',blkdata(8),'annot',blkdata(9),'region',blkdata(10),'comp',blkdata(11),'excenergy',blkdata(12))];
             end
         else
             disp('Error reading block.');

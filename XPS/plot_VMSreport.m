@@ -1,10 +1,10 @@
 %Licence: GNU General Public License version 2 (GPLv2)
-function y = plot_vmsreport(data, colors,scaling,seq)
+function y = plot_VMSreport(data, colors,scaling,seq)
     % data: use 'import_VMSreport(file)'
     % scaling(1) switch normalization mode
     % scaling(2) y-scaling
     % scaling(3) y-offset
-    % scaling(3) x-offset
+    % scaling(4) x-offset
     % colors: color of sectra, e.g. [1,0,0;1,0,0;1,0.67,0;1,0.67,0;0,0,1;0,0,1]
     % seq: sequence of spectra when plotted, e.g.[5,6,3,4,1,2]
 
